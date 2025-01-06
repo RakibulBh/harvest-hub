@@ -6,6 +6,7 @@ export default function Home() {
     <main className="h-screen w-full bg-green-100">
       {/* Nav bar */}
       <Navbar />
+      <p>Hello</p>
     </main>
   );
 }
