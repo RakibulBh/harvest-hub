@@ -1,7 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
+import { neon } from "@neondatabase/serverless";
 
 export async function GET(request: Request) {
   const { method } = request;
+  const sql = neon(process.env.DATABASE_URL!);
 
   // switch (method) {
   //   case 'GET':
