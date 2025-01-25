@@ -1,12 +1,7 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { Pool } from 'pg';
+import { NextApiRequest, NextApiResponse } from "next";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // const { method } = req;
+export async function GET(request: Request) {
+  const { method } = request;
 
   // switch (method) {
   //   case 'GET':
@@ -36,7 +31,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   //     res.status(405).end(`Method ${method} Not Allowed`);
   // }
 
-  console.log({message: "hello"});
-
-
+  return Response.json({ hello: "hey" });
 }
