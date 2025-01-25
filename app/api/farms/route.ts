@@ -1,37 +1,82 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
-export async function GET(request: Request) {
-  const { method } = request;
-  const sql = neon(process.env.DATABASE_URL!);
+const sql = neon(process.env.DATABASE_URL!);
 
-  // switch (method) {
-  //   case 'GET':
-  //     try {
-  //       const { rows } = await pool.query('SELECT * FROM Farms');
-  //       res.status(200).json(rows);
-  //     } catch (error) {
-  //       res.status(500).json({ message: 'Error fetching farms', error: (error as Error).message });
-  //     }
-  //     break;
+// Handle GET (all farms or single farm via query parameter)
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
 
-  //   case 'POST':
-  //     try {
-  //       const { farm_name, contact_name, address, postcode, contact_email, contact_phone, description } = req.body;
-  //       const { rows } = await pool.query(
-  //         'INSERT INTO Farms (farm_name, contact_name, address, postcode, contact_email, contact_phone, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-  //         [farm_name, contact_name, address, postcode, contact_email, contact_phone, description]
-  //       );
-  //       res.status(201).json(rows[0]);
-  //     } catch (error) {
-  //       res.status(500).json({ message: 'Error creating farm', error: (error as Error).message });
-  //     }
-  //     break;
+  try {
+    if (id) {
+      const farm = await sql`SELECT * FROM Farms WHERE farm_id = ${id}`;
+      if (farm.length === 0) {
+        return NextResponse.json({ error: "Farm not found" }, { status: 404 });
+      }
+      return NextResponse.json(farm[0]);
+    } else {
+      const farms = await sql`SELECT * FROM Farms`;
+      return NextResponse.json(farms);
+    }
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch farm(s)" }, { status: 500 });
+  }
+}
 
-  //   default:
-  //     res.setHeader('Allow', ['GET', 'POST']);
-  //     res.status(405).end(`Method ${method} Not Allowed`);
-  // }
+// Handle POST (create a new farm)
+export async function POST(req: NextRequest) {
+  try {
+    const { farm_name, contact_name, address, postcode, contact_email, contact_phone, description } = await req.json();
+    const newFarm = await sql`
+      INSERT INTO Farms (farm_name, contact_name, address, postcode, contact_email, contact_phone, description)
+      VALUES (${farm_name}, ${contact_name}, ${address}, ${postcode}, ${contact_email}, ${contact_phone}, ${description})
+      RETURNING *`;
+    return NextResponse.json(newFarm[0], { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to create farm" }, { status: 500 });
+  }
+}
 
-  return Response.json({ hello: "hey" });
+// Handle PUT (update a farm by ID via query parameter)
+export async function PUT(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ error: "Farm ID is required" }, { status: 400 });
+  }
+
+  try {
+    const { farm_name, contact_name, address, postcode, contact_email, contact_phone, description } = await req.json();
+    const updatedFarm = await sql`
+      UPDATE Farms 
+      SET farm_name=${farm_name}, contact_name=${contact_name}, address=${address}, postcode=${postcode}, 
+          contact_email=${contact_email}, contact_phone=${contact_phone}, description=${description}
+      WHERE farm_id = ${id} RETURNING *`;
+
+    if (updatedFarm.length === 0) {
+      return NextResponse.json({ error: "Farm not found" }, { status: 404 });
+    }
+    return NextResponse.json(updatedFarm[0]);
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to update farm" }, { status: 500 });
+  }
+}
+
+// Handle DELETE (delete a farm by ID via query parameter)
+export async function DELETE(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ error: "Farm ID is required" }, { status: 400 });
+  }
+
+  try {
+    await sql`DELETE FROM Farms WHERE farm_id = ${id}`;
+    return NextResponse.json({ message: "Farm deleted successfully" });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to delete farm" }, { status: 500 });
+  }
 }
