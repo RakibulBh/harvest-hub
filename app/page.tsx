@@ -123,7 +123,32 @@ export default function Home() {
           className=""
         />
       </section>
-      <section className="h-screen"></section>
+      <section className="h-screen w-full bg-white py-16 px-28">
+        <p className="text-4xl text-[#013A40] font-semibold">
+          Fresh from the farm to your door – subscribe for regular,
+          locally-sourced food deliveries.
+        </p>
+        <div className="h-96 flex flex-row items-center justify-between mt-16 px-16">
+          <div className="relative">
+            <Image
+              src="/home/potatoes.jpg"
+              alt="potatoes"
+              width={450}
+              height={450}
+              style={{ objectFit: "contain" }}
+            />
+          </div>
+          <div className="relative">
+            <Image
+              src="/home/packaging.jpg"
+              alt="packaging"
+              width={450}
+              height={450}
+              style={{ objectFit: "contain" }}
+            />
+          </div>
+        </div>
+      </section>
       <Footer />
     </main>
   );
