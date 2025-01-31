@@ -110,6 +110,9 @@ export default function RootLayout({
               <Link href="#" className="hover:underline block">
                 Why Choose Us
               </Link>
+              <Link href="/privacy-policy" className="hover:underline block">
+              Privacy Policy
+              </Link>
             </div>
           </div>
         </footer>
