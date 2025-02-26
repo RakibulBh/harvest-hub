@@ -259,7 +259,7 @@ export default function MessagingPage() {
                 onClick={() => setFilter(option)}
                 className={`px-4 py-2 rounded-3xl ${
                   filter === option
-                    ? "bg-customLightGreen text-white"
+                    ? "bg-[#00B207] text-white"
                     : "bg-gray-200 text-black"
                 } transition duration-200`}
               >
