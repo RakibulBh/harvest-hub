@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // ✅ Import Next.js router for redirection
+import { useRouter } from "next/navigation"; 
 import Header from "./header";
 import { Footer } from "./Footer"; 
 
@@ -17,12 +17,12 @@ const RegisterPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter(); // ✅ Initialize router
+  const router = useRouter(); 
 
   useEffect(() => {
     if (success) {
       setTimeout(() => {
-        router.push("/login"); // ✅ Redirect user after 3 seconds
+        router.push("/login"); 
       }, 3000);
     }
   }, [success, router]);
@@ -86,7 +86,7 @@ const RegisterPage = () => {
         <div className="w-full max-w-lg bg-white p-8 rounded-2xl shadow-xl">
           <h2 className="text-3xl font-bold text-center text-[#2b6144]">Farmer Registration</h2>
 
-          {/* Error & Success Messages */}
+          
           {error && <p className="text-red-600 font-medium text-center mt-2">{error}</p>}
           {success && (
             <p className="text-green-600 font-medium text-center mt-2 animate-bounce">{success}</p>
