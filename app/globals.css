@@ -2,9 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Root Variables for Light and Dark Mode */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --accent: #f4b400; /* Example: Accent color from your UI */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -14,8 +16,22 @@
   }
 }
 
+/* Apply Global Styles */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-[var(--background)] text-[var(--foreground)] font-sans;
 }
+
+/* Custom Button Styles */
+.btn-primary {
+  @apply bg-[var(--accent)] text-white font-semibold py-2 px-6 rounded-lg;
+}
+
+.btn-secondary {
+  @apply bg-[#0f3d3e] text-white font-semibold py-2 px-6 rounded-lg;
+}
+
+/* Input Field Styling */
+.input-field {
+  @apply w-full border-b-2 border-gray-300 focus:outline-none focus:border-[var(--accent)] p-2;
+}
+
