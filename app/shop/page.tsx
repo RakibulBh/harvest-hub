@@ -33,9 +33,6 @@ export const ShopPage = () => {
     setSelectedItem(null);
   };
 
-  {
-    /* dummy data for shop items */
-  }
   const recommendedScrollRef = useRef<HTMLDivElement | null>(null);
   const featuredScrollRef = useRef<HTMLDivElement | null>(null);
 

@@ -23,7 +23,7 @@ export default function Sidebar() {
       {/* Sidebar Section */}
       <div className="flex">
         <div
-          className={` bg-slate-300  text-customDarkText p-4 transition-all duration-200 min-h-screen ${
+          className={` bg-slate-200  text-customDarkText p-4 transition-all duration-200 min-h-screen ${
             isOpen ? "w-[270px]" : "w-[90px]"
           }`}
         >

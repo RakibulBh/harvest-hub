@@ -252,14 +252,14 @@ export default function MessagingPage() {
           </div>
 
           {/* filters */}
-          <div className="flex space-x-2 ml-3 mb-4">
+          <div className="flex space-x-2 ml-3 mb-4 transition-all duration-300 ease-in-out">
             {filterOptions.map((option) => (
               <button
                 key={option}
                 onClick={() => setFilter(option)}
                 className={`px-4 py-2 rounded-3xl ${
                   filter === option
-                    ? "bg-[#00B207] text-white"
+                    ? "bg-[#2fce65] text-white"
                     : "bg-gray-200 text-black"
                 } transition duration-200`}
               >
@@ -454,7 +454,7 @@ export default function MessagingPage() {
 
         {/* Profile Side Panel */}
         {isProfileOpen && selectedMessage && (
-          <div className="fixed inset-y-0 right-0 w-120 bg-white shadow-lg p-4 border-l flex flex-col">
+          <div className="fixed inset-y-0 right-0 w-[500px] bg-white shadow-lg p-4 border-l flex flex-col">
             <div className="flex">
               <button
                 className="self-start text-gray-500 text-2xl font-semibold"
@@ -482,7 +482,7 @@ export default function MessagingPage() {
             </p>
 
             {/* gap space*/}
-            <div className="w-full h-3 bg-gray-200"></div>
+            <div className="w-full h-3 bg-[#F5F5F5]"></div>
 
             {/* User Info */}
             <div className="mt-4">
