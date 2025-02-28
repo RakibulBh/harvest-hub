@@ -141,7 +141,7 @@ const Navbar = () => {
   ];
 
   return (
-    <header className="bg-white shadow-md">
+    <header className="bg-white shadow-md ">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
@@ -153,7 +153,7 @@ const Navbar = () => {
 
           {/* Main Navigation */}
           <nav className="hidden md:flex">
-            <ul className="flex space-x-8">
+            <ul className="flex space-x-[50px]">
               {navItems.map((item) => (
                 <li
                   key={item.title}
