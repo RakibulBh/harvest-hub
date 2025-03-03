@@ -35,3 +35,22 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+/* For WebKit browsers like Chrome, Safari */
+::-webkit-scrollbar {
+  width: 10px; /* Width of scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1; /* Track color */
+  border-radius: 10px; /* Optional for rounded corners */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00b207; /* Scrollbar color */
+  border-radius: 10px;
+  transition: background 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00b207; /* Darker on hover */
+}

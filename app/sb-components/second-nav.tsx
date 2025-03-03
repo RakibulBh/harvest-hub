@@ -1,13 +1,5 @@
 import React, { useState } from "react";
-import {
-  Truck,
-  DollarSign,
-  Award,
-  Eye,
-  Package,
-  Users,
-  Zap,
-} from "lucide-react";
+import { Apple, Ham, Milk, Croissant, Wheat, Vegan, Zap } from "lucide-react";
 
 const CategorySelector = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -16,37 +8,37 @@ const CategorySelector = () => {
     {
       id: "supply",
       label: "Fruits & Veg",
-      icon: <Truck className="w-5 h-5" />,
+      icon: <Apple className="w-5 h-5" />,
       color: "bg-green-100 text-green-600",
     },
     {
       id: "prices",
       label: "Meats",
-      icon: <DollarSign className="w-5 h-5" />,
+      icon: <Ham className="w-5 h-5" />,
       color: "bg-blue-100 text-blue-600",
     },
     {
       id: "quality",
       label: "Milks & Dairy",
-      icon: <Award className="w-5 h-5" />,
+      icon: <Milk className="w-5 h-5" />,
       color: "bg-yellow-100 text-yellow-600",
     },
     {
       id: "transparency",
       label: "Bakery",
-      icon: <Eye className="w-5 h-5" />,
+      icon: <Croissant className="w-5 h-5" />,
       color: "bg-purple-100 text-purple-600",
     },
     {
       id: "packaging",
       label: "Herbs & Spices",
-      icon: <Package className="w-5 h-5" />,
+      icon: <Wheat className="w-5 h-5" />,
       color: "bg-orange-100 text-orange-600",
     },
     {
       id: "community",
       label: "Artisanal",
-      icon: <Users className="w-5 h-5" />,
+      icon: <Vegan className="w-5 h-5" />,
       color: "bg-pink-100 text-pink-600",
     },
     {
@@ -68,7 +60,9 @@ const CategorySelector = () => {
           {categories.map((category) => (
             <button
               key={category.id}
-              onClick={() => handleCategoryClick(category.id)}
+              onClick={() => {
+                handleCategoryClick(category.id);
+              }}
               className={`flex flex-col items-center px-4 py-3 rounded-lg transition-all ${
                 selectedCategory === category.id
                   ? "bg-white shadow-md scale-105"
