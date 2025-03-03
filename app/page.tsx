@@ -1,7 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { Footer } from "./components/Footer";
 
 const navlinks = [
   { name: "Home", href: "/" },
@@ -41,11 +40,11 @@ export default function Home() {
               Connecting farmers and people
             </h1>
             <p className="text-white text-xl mt-4">
-              support your local economy and starts a sustainable development
+              Support your local economy and start a sustainable development
               project.
             </p>
             <button className="bg-[#00B207] text-white px-16 py-2 rounded-full mt-8 items-center justify-center flex">
-              <p className="text-white font-semibold">start now</p>
+              <p className="text-white font-semibold">Start Now</p>
             </button>
           </div>
         </div>
@@ -54,7 +53,8 @@ export default function Home() {
         <div className="w-full bg-[#E6E8EC] h-full p-16">
           <div className="pr-[50rem]">
             <h1 className="text-4xl text-[#013A40] font-semibold">
-              Explore over 20,000 farms across the U.K find your local farm now.
+              Explore over 20,000 farms across the U.K. Find your local farm
+              now.
             </h1>
             <div className="mt-16">
               <p>Search by postcode</p>
@@ -80,7 +80,7 @@ export default function Home() {
           className="absolute right-20"
         />
       </section>
-      <section className="flex py-20 px-10 bg-white  items-center justify-center">
+      <section className="flex py-20 px-10 bg-white items-center justify-center">
         <div className="w-full bg-[#013A40] flex flex-col justify-between p-16 rounded-3xl px-48">
           <h1 className="text-white text-4xl font-semibold text-center">
             Start in 3 simple steps
@@ -93,7 +93,7 @@ export default function Home() {
           </div>
           <div className="flex justify-center">
             <button className="bg-[#00B207] text-white px-16 py-2 rounded-full mt-8 items-center justify-center flex">
-              <p className="text-white font-semibold">start now</p>
+              <p className="text-white font-semibold">Start Now</p>
             </button>
           </div>
         </div>
@@ -105,11 +105,11 @@ export default function Home() {
           </h1>
           <p className="text-4xl text-center text-[#013A40] mt-4">
             You can sell your products through our website. Create a farmer
-            account ,list your products and beging sellings.
+            account, list your products, and begin selling.
           </p>
           <div className="mx-auto flex flex-row items-center gap-8 mt-8">
             <button className="bg-[#00B207] text-white px-16 py-2 rounded-full items-center justify-center flex">
-              Start now
+              Start Now
             </button>
             <p className="text-md text-[#013A40]">Learn more</p>
           </div>
@@ -149,7 +149,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <Footer />
     </main>
   );
 }

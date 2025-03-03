@@ -1,8 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Header } from "../components/Farmer-Header";
-import Navbar from "../components/homeNavbar";
-import { HeroImage } from "../components/Sb-HeroImage";
+import Navbar from "../sb-components/header1";
 
 export default function ProductsList() {
   interface Product {
@@ -62,39 +60,6 @@ export default function ProductsList() {
     <>
       <Navbar />
       <div className="mt-[130px]"></div>
-      <HeroImage />
-
-      {/* Filter & Search Section */}
-      <div className="flex items-center space-x-4 ml-[150px]">
-        {/* Category filter Section */}
-        <div className="category-filter p-5 w-[250px]">
-          <select
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="mt-2 p-2 border border-gray-300 rounded-xl w-[200px]"
-          >
-            <option value="All">All categories</option>
-            <option value="fruits & veg">Fruits & Veg</option>
-            <option value="meat">Meat</option>
-            <option value="dairy">Dairy</option>
-            <option value="bakery">Bakery</option>
-            <option value="herbs">Herbs & Spices</option>
-            <option value="grains & crops">Grains & Crops</option>
-            <option value="artisinal">Artisinal</option>
-          </select>
-        </div>
-
-        {/* Search Bar */}
-        <div className="search-bar p-5 w-[300px]">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search for products... "
-            className="mt-2 p-2 border border-gray-300 rounded-xl w-full"
-          />
-        </div>
-      </div>
 
       {/* Promotions Section */}
       <div>

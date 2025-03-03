@@ -1,32 +1,11 @@
 "use client";
 // components/Navbar.jsx
-
-import { SetStateAction, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 const Navbar = () => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  // Add delay handling to prevent jittering
-  const [menuTimeout, setMenuTimeout] = useState<NodeJS.Timeout | null>(null);
-
-  const handleMenuEnter = (menuTitle: string) => {
-    // Clear any existing timeouts to prevent conflicts
-    if (menuTimeout) clearTimeout(menuTimeout);
-    setActiveMenu(menuTitle);
-  };
-
-  const handleMenuLeave = () => {
-    // Set a small delay before closing the menu to allow for mouse movement
-    const timeout = setTimeout(() => {
-      setActiveMenu(null);
-    }, 300); // 300ms delay before closing
-    setMenuTimeout(timeout);
-  };
-
-  // Function to handle mouse entering the mega menu itself
-  const handleMegaMenuEnter = () => {
-    if (menuTimeout) clearTimeout(menuTimeout);
-  };
+  const [cartCount, setCartCount] = useState<number>(0);
 
   const navItems = [
     {
@@ -166,28 +145,28 @@ const Navbar = () => {
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-20">
-          {/* Logo */}
-          <Link href="/" className="flex items-center">
-            <span className="text-2xl font-bold text-green-600">
-              Harvest Hub
-            </span>
-          </Link>
+          {/* Logo - with fixed width for consistent spacing */}
+          <div className="w-48">
+            <Link href="/" className="flex items-center">
+              <span className="text-2xl font-bold text-green-600">
+                <img src="logo.png" alt="Logo" />
+              </span>
+            </Link>
+          </div>
 
-          {/* Main Navigation */}
-          <nav className="hidden md:flex">
-            <ul className="flex space-x-8">
+          {/* Main Navigation - centered */}
+          <nav className="hidden md:flex justify-center flex-1">
+            <ul className="flex space-x-[50px]">
               {navItems.map((item) => (
-                <li key={item.title} className="relative group">
-                  {/* Expanded hover area - using pseudo-element to create larger hitbox */}
-                  <div
-                    className="absolute inset-0 -top-4 -bottom-4 -left-4 -right-4 z-10"
-                    onMouseEnter={() => handleMenuEnter(item.title)}
-                    onMouseLeave={handleMenuLeave}
-                  ></div>
-
+                <li
+                  key={item.title}
+                  className="relative group"
+                  onMouseEnter={() => setActiveMenu(item.title)}
+                  onMouseLeave={() => setActiveMenu(null)}
+                >
                   <Link
                     href={item.path}
-                    className="py-8 text-gray-800 font-medium hover:text-green-600 transition-colors duration-300 relative z-20"
+                    className="py-8 text-gray-800 font-medium hover:text-green-600 transition-colors duration-300"
                   >
                     {item.title}
                   </Link>
@@ -199,17 +178,15 @@ const Navbar = () => {
                     }`}
                   ></div>
 
-                  {/* Mega Menu - Now positioned fixed and centered */}
+                  {/* Mega Menu */}
                   {item.megaMenu && (
                     <div
                       className={`fixed left-0 right-0 w-full bg-white shadow-xl border-t border-gray-200 transition-all duration-500 ease-in-out ${
                         activeMenu === item.title
                           ? "opacity-100 visible translate-y-0"
-                          : "opacity-0 invisible -translate-y-4 pointer-events-none"
+                          : "opacity-0 invisible -translate-y-4"
                       }`}
                       style={{ top: "80px", zIndex: 50 }}
-                      onMouseEnter={handleMegaMenuEnter}
-                      onMouseLeave={handleMenuLeave}
                     >
                       <div className="container mx-auto py-8 px-4 max-w-6xl">
                         <div className="grid grid-cols-12 gap-8">
@@ -269,8 +246,156 @@ const Navbar = () => {
             </ul>
           </nav>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          {/* User Icons - with fixed width for consistent spacing */}
+          <div className="hidden md:flex items-center space-x-6 w-48 justify-end">
+            {/* Profile Icon */}
+            <Link
+              href="/profile"
+              className="text-gray-700 hover:text-green-600 transition-colors duration-300"
+            >
+              <div className="relative">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
+            </Link>
+
+            {/* Wishlist Icon */}
+            <Link
+              href="/wishlist"
+              className="text-gray-700 hover:text-green-600 transition-colors duration-300"
+            >
+              <div className="relative">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+              </div>
+            </Link>
+
+            {/* Cart Icon with Counter */}
+            <Link
+              href="/cart"
+              className="text-gray-700 hover:text-green-600 transition-colors duration-300"
+            >
+              <div className="relative">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
+              </div>
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button with Icons */}
+          <div className="md:hidden flex items-center space-x-4">
+            {/* Profile Icon (Mobile) */}
+            <Link
+              href="/profile"
+              className="text-gray-700 hover:text-green-600 transition-colors duration-300"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </Link>
+
+            {/* Wishlist Icon (Mobile) */}
+            <Link
+              href="/wishlist"
+              className="text-gray-700 hover:text-green-600 transition-colors duration-300"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                />
+              </svg>
+            </Link>
+
+            {/* Cart Icon (Mobile) */}
+            <Link
+              href="/cart"
+              className="text-gray-700 hover:text-green-600 transition-colors duration-300"
+            >
+              <div className="relative">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
+              </div>
+            </Link>
+
+            {/* Hamburger Menu Button */}
             <button
               className="text-gray-800 hover:text-green-600 focus:outline-none"
               aria-label="Toggle menu"
@@ -293,17 +418,6 @@ const Navbar = () => {
           </div>
         </div>
       </div>
-
-      {/* Semi-transparent overlay when menu is open */}
-      <div
-        className={`fixed inset-0 bg-black transition-opacity duration-500 ease-in-out ${
-          activeMenu
-            ? "opacity-20 visible"
-            : "opacity-0 invisible pointer-events-none"
-        }`}
-        style={{ zIndex: 40 }}
-        onClick={() => setActiveMenu(null)}
-      ></div>
     </header>
   );
 };
