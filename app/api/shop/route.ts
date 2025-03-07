@@ -15,11 +15,18 @@ export async function GET() {
     const result = await client.query(`
             SELECT 
                 product_id AS id, 
+                farm_id,
                 product_name AS name, 
                 image_url AS image, 
                 unit_price AS price, 
                 description,
-                category 
+                category,
+                unit,
+                available_stock AS stock,
+                harvest_date,
+                best_before_date AS best_before,
+                liked
+
             FROM Products
         `);
 

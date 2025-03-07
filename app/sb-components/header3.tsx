@@ -63,10 +63,12 @@ const Navbar = () => {
           {
             title: "Categories",
             links: [
-              { name: "Fruits", path: "/shop/fruits" },
-              { name: "Vegetables", path: "/shop/vegetables" },
-              { name: "Dairy", path: "/shop/dairy" },
-              { name: "Bakery", path: "/shop/bakery" },
+              { name: "Fruits & Veg", path: "/testing_components/catalogue" },
+              { name: "Meats", path: "/testing_components/catalogue" },
+              { name: "Dairy", path: "/testing_components/catalogue" },
+              { name: "Bakery", path: "/testing_components/catalogue" },
+              { name: "Herbs & Spices", path: "/testing_components/catalogue" },
+              { name: "Artisinal", path: "/testing_components/catalogue" },
             ],
           },
           {
@@ -90,7 +92,7 @@ const Navbar = () => {
         featured: {
           title: "Seasonal Spotlight",
           description: "Fresh autumn harvest is here!",
-          image: "/autumn-produce.jpg",
+          image: "/picturesForShop/1.jpg",
           link: "/shop/seasonal-spotlight",
         },
       },

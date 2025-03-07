@@ -31,7 +31,7 @@ export default function MapComponent({ shopItems }: { shopItems: ShopItem[] }) {
       : [51.6364, -0.22908];
 
   return (
-    <div className="h-[350px] w-[400px] mt-10 border border-gray-300 rounded-lg shadow-lg overflow-hidden translate-x-[825px] translate-y-[-220px]">
+    <div className="h-[350px] w-[600px] mt-10 ml-auto  border border-gray-300 rounded-lg shadow-lg overflow-hidden">
       <MapContainer
         center={defaultCenter}
         zoom={13}

@@ -17,19 +17,18 @@ export async function GET(
     const result = await client.query(
       `
       SELECT 
-                product_id AS id, 
-                product_name AS name, 
-                image_url AS image, 
-                unit_price AS price, 
-                description,
-                category,
-                unit,
-                available_stock AS stock,
-                harvest_date,
-                best_before_date AS best_before,
-                liked
-            FROM Products
-      WHERE product_id = $1
+        farm_id AS id, 
+        farm_name AS name, 
+        contact_name AS contact, 
+        address, 
+        postcode, 
+        contact_email AS email, 
+        contact_phone AS phone, 
+        description 
+        longitude AS lng
+        latitude AS lat
+      FROM Farms
+      WHERE farm_id = $1
     `,
       [params.id]
     );
@@ -37,15 +36,15 @@ export async function GET(
     await client.end();
 
     if (result.rows.length === 0) {
-      return NextResponse.json({ error: "product not found" }, { status: 404 });
+      return NextResponse.json({ error: "Farm not found" }, { status: 404 });
     }
 
     return NextResponse.json(result.rows[0]);
   } catch (error: unknown) {
     if (error instanceof Error) {
-      console.error("Error fetching product details:", error.message);
+      console.error("Error fetching farm details:", error.message);
       return NextResponse.json(
-        { error: "Failed to fetch product details", details: error.message },
+        { error: "Failed to fetch farm details", details: error.message },
         { status: 500 }
       );
     } else {

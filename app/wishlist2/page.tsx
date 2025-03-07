@@ -38,100 +38,30 @@ const WishlistPage: React.FC = () => {
   const [viewType, setViewType] = useState<ViewType>("grid");
   const [removedItem, setRemovedItem] = useState<string | null>(null);
 
-  // Simulate fetching wishlist data
+  // API call to fetch products
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
-    // In a real application, you would fetch from an API
-    const fetchWishlist = async () => {
-      // Simulating API delay
-      setTimeout(() => {
-        // Mock data
-        const mockWishlist: Product[] = [
-          {
-            id: "1",
-            name: "Organic Tomatoes",
-            price: 3.99,
-            imageUrl: "/picturesForCart/Red-capsicum.jpg",
-            farmer: "Green Valley Farm",
-            category: "Vegetables",
-            available: true,
-            description:
-              "Locally grown, pesticide-free tomatoes perfect for salads and cooking. Harvested at peak ripeness for maximum flavor and nutrition.",
-          },
-          {
-            id: "2",
-            name: "Farm Fresh Eggs",
-            price: 5.49,
-            imageUrl: "/pictursForCart/eggs.jpg",
-            farmer: "Sunrise Poultry",
-            category: "Dairy & Eggs",
-            available: true,
-            description:
-              "Free-range eggs from pasture-raised chickens. Dozen per carton. Rich in flavor with vibrant orange yolks.",
-          },
-          {
-            id: "3",
-            name: "Honey (16oz)",
-            price: 8.99,
-            imageUrl: "/picturesForCart/honey.jpg",
-            farmer: "Wildflower Apiary",
-            category: "Specialty",
-            available: false,
-            description:
-              "Raw, unfiltered wildflower honey collected from local hives. Pure, natural sweetness with floral notes.",
-          },
-          {
-            id: "4",
-            name: "Organic Milk",
-            price: 4.99,
-            imageUrl: "/picturesForCart/milk.jpg",
-            farmer: "Orchard Hills",
-            category: "Dairy",
-            available: true,
-            description:
-              "Sweet and crisp apples grown using organic farming practices. Perfect for snacking, baking, or making fresh apple juice.",
-          },
-          {
-            id: "5",
-            name: "Farm Fresh Eggs",
-            price: 5.49,
-            imageUrl: "/picturesForCart/eggs.jpg",
-            farmer: "Sunrise Poultry",
-            category: "Dairy & Eggs",
-            available: true,
-            description:
-              "Free-range eggs from pasture-raised chickens. Dozen per carton. Rich in flavor with vibrant orange yolks.",
-          },
-          {
-            id: "6",
-            name: "Honey (16oz)",
-            price: 8.99,
-            imageUrl: "/picturesForCart/honey.jpg",
-            farmer: "Wildflower Apiary",
-            category: "Specialty",
-            available: false,
-            description:
-              "Raw, unfiltered wildflower honey collected from local hives. Pure, natural sweetness with floral notes.",
-          },
-          {
-            id: "7",
-            name: "Organic Apples",
-            price: 4.99,
-            imageUrl: "/picturesForCart/apple.jpg",
-            farmer: "Orchard Hills",
-            category: "Fruits",
-            available: true,
-            description:
-              "Sweet and crisp apples grown using organic farming practices. Perfect for snacking, baking, or making fresh apple juice.",
-          },
-        ];
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/shop");
+        if (!res.ok) {
+          throw new Error("Failed to fetch products");
+        }
+        const data = await res.json();
+        setProducts(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-        setWishlistItems(mockWishlist);
-        setIsLoading(false);
-      }, 800);
-    };
-
-    fetchWishlist();
+    fetchProducts();
   }, []);
+
+  if (loading) return;
+  <p className="text-center py-20 text-lg">Loading products...</p>;
 
   // Load user preference for view type from localStorage (if available)
   useEffect(() => {
@@ -153,9 +83,6 @@ const WishlistPage: React.FC = () => {
     e.stopPropagation(); // Prevent product click when removing
     e.preventDefault(); // Prevent default link behavior
 
-    // Set the item as being removed for animation
-    setRemovedItem(id);
-
     // Remove after animation completes
     setTimeout(() => {
       setWishlistItems(wishlistItems.filter((item) => item.id !== id));
@@ -170,11 +97,6 @@ const WishlistPage: React.FC = () => {
 
     setAddedToCart(product.id);
 
-    // Reset the animation state after 1.5 seconds
-    setTimeout(() => {
-      setAddedToCart(null);
-    }, 1500);
-
     // Your actual cart logic here
     console.log(`Added ${product.name} to cart`);
   };
@@ -184,7 +106,7 @@ const WishlistPage: React.FC = () => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 fade-in">
       {wishlistItems.map((product) => (
         <Link
-          href={`/product/${product.id}`}
+          href={`/testing_components/${product.id}`}
           key={product.id}
           className="block"
         >
@@ -473,119 +395,6 @@ const WishlistPage: React.FC = () => {
           </>
         )}
       </div>
-
-      {/* CSS for animations */}
-      <style jsx global>{`
-        .fade-in {
-          animation: fadeIn 0.5s ease-in-out;
-        }
-
-        .fade-down {
-          animation: fadeDown 0.5s ease-in-out;
-        }
-
-        .scale-in {
-          animation: scaleIn 0.3s ease-in-out;
-        }
-
-        .scale-out {
-          animation: scaleOut 0.3s ease-in-out;
-          opacity: 0;
-          transform: scale(0.9);
-        }
-
-        .delay-200 {
-          animation-delay: 0.2s;
-        }
-
-        .hover-lift {
-          transition: transform 0.3s ease-in-out;
-        }
-
-        .hover-lift:hover {
-          transform: translateY(-3px);
-        }
-
-        .btn-scale {
-          transition: transform 0.2s ease-in-out;
-        }
-
-        .btn-scale:hover:not(:disabled) {
-          transform: scale(1.05);
-        }
-
-        .btn-scale:active:not(:disabled) {
-          transform: scale(0.95);
-        }
-
-        .hover-right:hover {
-          transform: translateX(3px);
-          transition: transform 0.2s ease-in-out;
-        }
-
-        .added-to-cart {
-          animation: addedPulse 1.5s ease-in-out;
-        }
-
-        .view-transition {
-          position: relative;
-          transition: all 0.3s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes fadeDown {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.9);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        @keyframes scaleOut {
-          from {
-            opacity: 1;
-            transform: scale(1);
-          }
-          to {
-            opacity: 0;
-            transform: scale(0.9);
-          }
-        }
-
-        @keyframes addedPulse {
-          0% {
-            transform: scale(1);
-          }
-          20% {
-            transform: scale(1.1);
-          }
-          40% {
-            transform: scale(1);
-          }
-        }
-      `}</style>
     </div>
   );
 };
