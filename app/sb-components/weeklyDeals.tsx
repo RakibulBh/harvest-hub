@@ -2,13 +2,24 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function Testing() {
+export default function WeeklyDeals() {
   interface Product {
     id: number;
+    farm_id: number;
+    promotion_id: number;
     name: string;
     image: string;
     price: number;
+    unit: string;
     description: string;
+    category: string;
+    stock: number;
+    harvest_date: Date;
+    best_before: Date;
+    liked: boolean;
+    discount: number;
+    discount_start: Date;
+    discount_end: Date;
   }
   const router = useRouter();
   const handleClick = (product: Product) => {
@@ -19,17 +30,17 @@ export default function Testing() {
   };
 
   // API call to fetch products
-  const [products, setProducts] = useState<Product[]>([]);
+  const [deals, setDeals] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch("/api/shop");
+        const res = await fetch("/api/weeklyDeals/");
         if (!res.ok) {
           throw new Error("Failed to fetch products");
         }
         const data = await res.json();
-        setProducts(data);
+        setDeals(data);
       } catch (error) {
         console.error(error);
       } finally {
@@ -49,18 +60,15 @@ export default function Testing() {
       <div className="bg-gray-100 p-10 px-0">
         <h1 className="text-4xl font-bold ml-[199.5px] mb-5">Weekly Deals</h1>
         <div className="flex gap-4 overflow-x-auto scrollbar-hide p-5 px-0 mb-1 scroll-smooth w-full mx-[199.5px]">
-          {products.slice(0, 6).map((product) => (
-            <div
-              key={product.id}
-              className="min-w-[256px] min-h-[410px] shadow-lg p-0 cursor-pointer transition-transform hover:scale-[1.01] flex flex-col justify-between rounded-lg"
-              onClick={() => handleClick(product)}
-            >
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-[250px] border object-cover "
-              />
-              <h3>{product.name}</h3>
+          {deals.map((deal) => (
+            <div key={deal.promotion_id}>
+              <h2>{deal.name}</h2>
+              <p>Price: ${deal.price}</p>
+
+              <p>
+                🔥 {deal.discount}% OFF! (Valid till{" "}
+                {deal.discount_end.toDateString()})
+              </p>
             </div>
           ))}
         </div>
@@ -69,7 +77,7 @@ export default function Testing() {
             className="bg-[#00b207] text-white py-2 px-4 rounded-lg hover:bg-[#00b207] hover:scale-105 transition-all duration-200 "
             onClick={() => {
               console.log("View All Clicked");
-              sendToCatalogue(products[0]);
+              sendToCatalogue(deals[0]);
             }}
           >
             View All

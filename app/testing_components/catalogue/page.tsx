@@ -18,6 +18,7 @@ export default function ProductListing() {
     dietaryOptions?: string[];
     distance?: number;
     rating?: number;
+    unit: string;
   }
 
   const router = useRouter();
@@ -131,6 +132,47 @@ export default function ProductListing() {
     setShowSortDropdown(false);
   };
 
+  const navigateToProduct = (productId: number) => {
+    router.push(`/testing_components/${productId}`);
+  };
+
+  const toggleLike = (e: React.MouseEvent, productId: number) => {
+    e.stopPropagation(); // Prevent navigation to product detail
+
+    try {
+      // Update the liked status in the products state
+      setProducts(
+        products.map((product) =>
+          product.id === productId
+            ? { ...product, liked: !product.liked }
+            : product
+        )
+      );
+
+      // Also update in filtered products to reflect the change immediately
+      setFilteredProducts(
+        filteredProducts.map((product) =>
+          product.id === productId
+            ? { ...product, liked: !product.liked }
+            : product
+        )
+      );
+
+      // Here you would typically also send an API request to update the backend
+      // For example:
+      // fetch('/api/like', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ productId, liked: !product.liked })
+      // });
+
+      setLikeError(null);
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      setLikeError("Failed to update like status. Please try again.");
+    }
+  };
+
   const getSortLabel = () => {
     switch (sortOption) {
       case "cheapest":
@@ -154,6 +196,13 @@ export default function ProductListing() {
   return (
     <>
       <Navbar />
+
+      {/* Error message for like functionality */}
+      {likeError && (
+        <div className="bg-red-100 text-red-700 p-3 text-center">
+          {likeError}
+        </div>
+      )}
 
       {/* Sorting Dropdown */}
       <div className="container mx-auto px-6 py-4 flex justify-end">
@@ -297,8 +346,23 @@ export default function ProductListing() {
             filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="border rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 bg-white h-80"
+                className="border rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 bg-white h-80 cursor-pointer relative"
+                onClick={() => navigateToProduct(product.id)}
               >
+                {/* Like button */}
+                <button
+                  className="absolute top-2 right-2 z-10 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors"
+                  onClick={(e) => toggleLike(e, product.id)}
+                >
+                  <Heart
+                    className={`h-5 w-5 ${
+                      product.liked
+                        ? "fill-red-500 text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  />
+                </button>
+
                 <div className="h-48 w-full">
                   <img
                     src={product.image}
@@ -307,12 +371,15 @@ export default function ProductListing() {
                   />
                 </div>
                 <div className="p-4 h-32 flex flex-col">
-                  <h3 className="font-semibold text-gray-700 text-sm mb-2 line-clamp-2 h-12">
+                  <h3 className="font-semibold text-gray-700 text-md mb-2 line-clamp-2 h-12">
                     {product.name}
                   </h3>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-green-600 font-bold">
+                    <span className="text-green-600 font-bold text-lg">
                       £{product.price}
+                    </span>
+                    <span className="text-sm text-gray-60 ">
+                      ( per {product.unit} )
                     </span>
                     {product.originalPrice > product.price && (
                       <span className="text-gray-400 text-sm line-through">

@@ -1,402 +1,625 @@
-// pages/wishlist.tsx
 "use client";
-
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../sb-components/header3";
 import {
   Heart,
-  Trash2,
+  ChevronDown,
+  ArrowLeft,
   ShoppingCart,
-  Loader2,
   Grid,
   List,
-  X,
+  Save,
+  Check,
+  Trash2,
+  Search,
+  Plus,
+  Minus,
 } from "lucide-react";
 
-// Define types for our products
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl: string;
-  farmer: string;
-  category: string;
-  available: boolean;
-  description: string;
-}
+export default function LikedProducts() {
+  interface Product {
+    id: number;
+    name: string;
+    image: string;
+    price: number;
+    originalPrice: number;
+    description: string;
+    category: string;
+    discount?: number;
+    liked?: boolean;
+    dietaryOptions?: string[];
+    distance?: number;
+    rating?: number;
+    unit: string;
+    quantity: number; // Added quantity field
+  }
 
-// Define view types
-type ViewType = "grid" | "list";
-
-const WishlistPage: React.FC = () => {
-  // State to store wishlist items
-  const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [addedToCart, setAddedToCart] = useState<string | null>(null);
-  const [viewType, setViewType] = useState<ViewType>("grid");
-  const [removedItem, setRemovedItem] = useState<string | null>(null);
-
-  // API call to fetch products
-  const [products, setProducts] = useState<Product[]>([]);
+  const router = useRouter();
+  const [likeError, setLikeError] = useState<string | null>(null);
+  const [likedProducts, setLikedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortOption, setSortOption] = useState("relevant");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); // New state for search
+
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchLikedProducts() {
       try {
+        // Fetch all products first
         const res = await fetch("/api/shop");
         if (!res.ok) {
           throw new Error("Failed to fetch products");
         }
         const data = await res.json();
-        setProducts(data);
+
+        // Filter to only liked products
+        const likedProductsData = data.filter(
+          (product: { liked: boolean }) => product.liked === true
+        );
+
+        // Add sample ratings if they don't exist and initialize quantity
+        const dataWithRatings = likedProductsData.map(
+          (product: { rating: any; quantity?: number }) => ({
+            ...product,
+            rating: product.rating || Math.random() * 4 + 1, // Random rating between 1 and 5
+            quantity: product.quantity || 1, // Initialize quantity
+          })
+        );
+
+        setLikedProducts(dataWithRatings);
       } catch (error) {
         console.error(error);
       } finally {
         setLoading(false);
       }
     }
-
-    fetchProducts();
+    fetchLikedProducts();
   }, []);
 
-  if (loading) return;
-  <p className="text-center py-20 text-lg">Loading products...</p>;
+  // Toggle product selection
+  const toggleProductSelection = (e: React.MouseEvent, productId: number) => {
+    e.stopPropagation(); // Prevent navigation to product detail
 
-  // Load user preference for view type from localStorage (if available)
-  useEffect(() => {
-    const savedViewType = localStorage.getItem(
-      "wishlistViewType"
-    ) as ViewType | null;
-    if (savedViewType) {
-      setViewType(savedViewType);
+    setSelectedProducts((prevSelected) => {
+      if (prevSelected.includes(productId)) {
+        // If already selected, remove from selection
+        return prevSelected.filter((id) => id !== productId);
+      } else {
+        // If not selected, add to selection
+        return [...prevSelected, productId];
+      }
+    });
+  };
+
+  // Function to save changes (remove selected products)
+  const saveChanges = () => {
+    try {
+      if (selectedProducts.length === 0) {
+        return; // Nothing to remove
+      }
+
+      // Remove selected products from liked products
+      setLikedProducts((prevProducts) => {
+        return prevProducts.filter(
+          (product) => !selectedProducts.includes(product.id)
+        );
+      });
+
+      // Clear selection
+      setSelectedProducts([]);
+      setLikeError(null);
+
+      // Show success message
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000); // Hide after 3 seconds
+    } catch (error) {
+      console.error("Error saving changes:", error);
+      setLikeError("Failed to update wishlist. Please try again.");
     }
-  }, []);
-
-  // Save view type preference when it changes
-  useEffect(() => {
-    localStorage.setItem("wishlistViewType", viewType);
-  }, [viewType]);
-
-  // Function to remove item from wishlist
-  const removeFromWishlist = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent product click when removing
-    e.preventDefault(); // Prevent default link behavior
-
-    // Remove after animation completes
-    setTimeout(() => {
-      setWishlistItems(wishlistItems.filter((item) => item.id !== id));
-      setRemovedItem(null);
-    }, 300);
   };
 
-  // Function to add to cart with animation feedback
-  const addToCart = (product: Product, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent product click when adding to cart
-    e.preventDefault(); // Prevent default link behavior
+  // Update product quantity
+  const updateQuantity = (
+    e: React.MouseEvent,
+    productId: number,
+    change: number
+  ) => {
+    e.stopPropagation(); // Prevent navigation to product detail
 
-    setAddedToCart(product.id);
-
-    // Your actual cart logic here
-    console.log(`Added ${product.name} to cart`);
+    setLikedProducts((prevProducts) => {
+      return prevProducts.map((product) => {
+        if (product.id === productId) {
+          const newQuantity = Math.max(1, product.quantity + change); // Ensure minimum quantity of 1
+          return { ...product, quantity: newQuantity };
+        }
+        return product;
+      });
+    });
   };
 
-  // Grid view component
-  const GridView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 fade-in">
-      {wishlistItems.map((product) => (
-        <Link
-          href={`/testing_components/${product.id}`}
-          key={product.id}
-          className="block"
+  const addToCart = (e: React.MouseEvent, productId: number) => {
+    e.stopPropagation(); // Prevent navigation to product detail
+
+    // Find the product and its quantity
+    const product = likedProducts.find((p) => p.id === productId);
+    if (!product) return;
+
+    // Here you would implement the add to cart functionality with quantity
+    console.log(`Added ${product.quantity} of product ${productId} to cart`);
+    // You could show a confirmation toast here
+  };
+
+  const navigateToProduct = (productId: number) => {
+    router.push(`/testing_components/${productId}`);
+  };
+
+  const navigateBack = () => {
+    router.back();
+  };
+
+  const handleSortChange = (option: string) => {
+    setSortOption(option);
+    setShowSortDropdown(false);
+
+    // Sort the liked products based on the selected option
+    let sorted = [...likedProducts];
+    switch (option) {
+      case "cheapest":
+        sorted.sort((a, b) => a.price - b.price);
+        break;
+      case "expensive":
+        sorted.sort((a, b) => b.price - a.price);
+        break;
+      case "rating":
+        sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+      case "relevant":
+      default:
+        sorted.sort((a, b) => {
+          const relevanceA = (a.rating || 0) - (a.distance || 50) / 100;
+          const relevanceB = (b.rating || 0) - (b.distance || 50) / 100;
+          return relevanceB - relevanceA;
+        });
+        break;
+    }
+    setLikedProducts(sorted);
+  };
+
+  const getSortLabel = () => {
+    switch (sortOption) {
+      case "cheapest":
+        return "Price: Low to High";
+      case "expensive":
+        return "Price: High to Low";
+      case "rating":
+        return "Highest Rated";
+      case "relevant":
+        return "Most Relevant";
+      default:
+        return "Sort By";
+    }
+  };
+
+  const toggleViewMode = () => {
+    setViewMode(viewMode === "grid" ? "list" : "grid");
+  };
+
+  // Filter products based on search query
+  const filteredProducts = likedProducts.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading)
+    return (
+      <div>
+        <Navbar />
+        <p className="text-center py-20 text-lg text-gray-600">Loading...</p>
+      </div>
+    );
+
+  // Render the star rating
+  const renderStarRating = (rating: number) => (
+    <div className="flex">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <svg
+          key={star}
+          className={`h-4 w-4 ${
+            star <= Math.round(rating || 0)
+              ? "text-yellow-400"
+              : "text-gray-300"
+          }`}
+          fill="currentColor"
+          viewBox="0 0 20 20"
         >
-          <div
-            className={`bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 cursor-pointer h-full hover-lift ${
-              removedItem === product.id ? "scale-out" : "scale-in"
-            }`}
-          >
-            <div className="relative h-56">
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-              />
-
-              {/* Availability badge */}
-              {!product.available && (
-                <div className="absolute top-3 left-3 bg-red-100 text-red-800 text-xs font-medium px-3 py-1 rounded-full shadow-sm">
-                  Currently Unavailable
-                </div>
-              )}
-
-              {/* Remove button */}
-              <button
-                onClick={(e) => removeFromWishlist(product.id, e)}
-                className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors z-10 btn-scale"
-                aria-label="Remove from wishlist"
-              >
-                <Trash2 className="h-4 w-4 text-red-500" />
-              </button>
-            </div>
-
-            <div className="p-5">
-              <div className="flex items-center space-x-1 mb-2">
-                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                  {product.category}
-                </span>
-                <span className="text-xs text-gray-500">
-                  • {product.farmer}
-                </span>
-              </div>
-
-              <h3 className="font-semibold text-lg text-gray-800 mb-1">
-                {product.name}
-              </h3>
-              <p className="text-sm text-gray-500 mb-4 line-clamp-2">
-                {product.description}
-              </p>
-
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-900 text-lg">
-                  ${product.price.toFixed(2)}
-                </span>
-
-                <button
-                  onClick={(e) => addToCart(product, e)}
-                  disabled={!product.available}
-                  className={`p-2 rounded-full flex items-center justify-center btn-scale ${
-                    product.available
-                      ? "bg-green-600 text-white hover:bg-green-700"
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  } z-10 ${addedToCart === product.id ? "added-to-cart" : ""}`}
-                  aria-label="Add to cart"
-                >
-                  {addedToCart === product.id ? (
-                    <span className="text-xs font-medium whitespace-nowrap fade-in">
-                      Added!
-                    </span>
-                  ) : (
-                    <ShoppingCart className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* View details indicator */}
-            <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-5 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-              <span className="bg-white bg-opacity-90 px-4 py-2 rounded-full text-sm font-medium text-gray-800 shadow-lg">
-                View Details
-              </span>
-            </div>
-          </div>
-        </Link>
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
       ))}
     </div>
   );
 
-  // List view component
-  const ListView = () => (
-    <div className="flex flex-col space-y-4 fade-in">
-      {wishlistItems.map((product) => (
-        <Link
-          href={`/product/${product.id}`}
-          key={product.id}
-          className="block"
-        >
-          <div
-            className={`bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col md:flex-row cursor-pointer relative hover-lift ${
-              removedItem === product.id ? "scale-out" : "scale-in"
-            }`}
-          >
-            <div className="relative h-56 md:h-auto md:w-48 lg:w-64 flex-shrink-0">
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 25vw"
-              />
+  // Render a grid view item
+  const renderGridItem = (product: Product) => (
+    <div
+      key={product.id}
+      className="rounded-lg overflow-hidden hover:shadow-xl transition-shadow hover:shadow-slate-100 duration-300 bg-white flex flex-col relative "
+      style={{ width: "100%", maxWidth: "360px" }} // Fixed width to prevent overlap
+    >
+      {/* Like/Select button - now toggles selection */}
+      <button
+        className="absolute top-2 right-2 z-10 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors"
+        onClick={(e) => toggleProductSelection(e, product.id)}
+      >
+        {selectedProducts.includes(product.id) ? (
+          <Check className="h-5 w-5 text-green-500" />
+        ) : (
+          <Heart className="h-5 w-5 fill-red-500 text-red-500" />
+        )}
+      </button>
 
-              {/* Availability badge */}
-              {!product.available && (
-                <div className="absolute top-3 left-3 bg-red-100 text-red-800 text-xs font-medium px-3 py-1 rounded-full shadow-sm">
-                  Currently Unavailable
-                </div>
-              )}
-            </div>
+      {/* Add to Cart button - circular icon */}
+      <button
+        className="absolute bottom-2 right-2 z-10 p-3 bg-green-600 rounded-full shadow-md hover:bg-green-700 transition-colors text-white"
+        onClick={(e) => addToCart(e, product.id)}
+      >
+        <ShoppingCart className="h-5 w-5" />
+      </button>
 
-            <div className="p-5 flex-grow flex flex-col">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center space-x-1 mb-2">
-                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                      {product.category}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      • {product.farmer}
-                    </span>
-                  </div>
-                  <h3 className="font-semibold text-lg text-gray-800 mb-1">
-                    {product.name}
-                  </h3>
-                </div>
+      {/* Square image container */}
+      <div
+        className="w-full aspect-square cursor-pointer"
+        onClick={() => navigateToProduct(product.id)}
+      >
+        <img
+          src={product.image}
+          alt={product.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
 
-                <button
-                  onClick={(e) => removeFromWishlist(product.id, e)}
-                  className="p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors flex-shrink-0 z-10 btn-scale"
-                  aria-label="Remove from wishlist"
-                >
-                  <X className="h-4 w-4 text-red-500" />
-                </button>
-              </div>
+      {/* Description below image */}
+      <div
+        className="p-4 flex flex-col flex-grow cursor-pointer"
+        onClick={() => navigateToProduct(product.id)}
+      >
+        <h3 className="font-semibold text-gray-700 text-md mb-3 line-clamp-2">
+          {product.name}
+        </h3>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-green-600 font-bold text-2xl">
+            £{product.price}
+          </span>
+          <span className="text-sm text-gray-500">per {product.unit}</span>
+        </div>
+        {product.originalPrice > product.price && (
+          <span className="text-gray-400 text-sm line-through mb-2">
+            £{product.originalPrice}
+          </span>
+        )}
 
-              <p className="text-sm text-gray-500 my-3">
-                {product.description}
-              </p>
-
-              <div className="flex justify-between items-center mt-auto">
-                <span className="font-bold text-gray-900 text-lg">
-                  ${product.price.toFixed(2)}
-                </span>
-
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 font-medium hidden md:inline-block hover-right">
-                    View Details →
-                  </span>
-
-                  <button
-                    onClick={(e) => addToCart(product, e)}
-                    disabled={!product.available}
-                    className={`px-4 py-2 rounded-lg flex items-center space-x-2 z-10 btn-scale ${
-                      product.available
-                        ? "bg-green-600 text-white hover:bg-green-700"
-                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    } ${addedToCart === product.id ? "added-to-cart" : ""}`}
-                    aria-label="Add to cart"
-                  >
-                    {addedToCart === product.id ? (
-                      <span className="font-medium fade-in">
-                        Added to Cart!
-                      </span>
-                    ) : (
-                      <>
-                        <ShoppingCart className="h-4 w-4" />
-                        <span>Add to Cart</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+        {/* Quantity selector */}
+        <div className="flex items-center mt-2 mb-3">
+          <span className="text-sm text-gray-600 "></span>
+          <div className="flex items-center border rounded-md">
+            <button
+              onClick={(e) => updateQuantity(e, product.id, -1)}
+              className="px-2 py-1 text-gray-600 hover:bg-gray-100"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="px-2 py-1 min-w-6 text-center">
+              {product.quantity}
+            </span>
+            <button
+              onClick={(e) => updateQuantity(e, product.id, 1)}
+              className="px-2 py-1 text-gray-600 hover:bg-gray-100"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
           </div>
-        </Link>
-      ))}
+        </div>
+
+        {/* Star Rating */}
+        <div className="mt-auto">{renderStarRating(product.rating || 0)}</div>
+      </div>
+    </div>
+  );
+
+  // Render a list view item
+  const renderListItem = (product: Product) => (
+    <div
+      key={product.id}
+      className="border rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 bg-white flex flex-row h-40 relative mb-5 w-full"
+    >
+      {/* Like/Select button - now toggles selection */}
+      <button
+        className="absolute top-2 right-2 z-10 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors"
+        onClick={(e) => toggleProductSelection(e, product.id)}
+      >
+        {selectedProducts.includes(product.id) ? (
+          <Check className="h-5 w-5 text-green-500" />
+        ) : (
+          <Heart className="h-5 w-5 fill-red-500 text-red-500" />
+        )}
+      </button>
+
+      {/* Add to Cart button - circular icon */}
+      <button
+        className="absolute bottom-2 right-2 z-10 p-3 bg-green-600 rounded-full shadow-md hover:bg-green-700 transition-colors text-white"
+        onClick={(e) => addToCart(e, product.id)}
+      >
+        <ShoppingCart className="h-5 w-5" />
+      </button>
+
+      {/* Square image container */}
+      <div
+        className="h-full aspect-square cursor-pointer"
+        onClick={() => navigateToProduct(product.id)}
+      >
+        <img
+          src={product.image}
+          alt={product.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Description beside image */}
+      <div
+        className="p-4 flex flex-col flex-grow cursor-pointer"
+        onClick={() => navigateToProduct(product.id)}
+      >
+        <h3 className="font-semibold text-gray-700 text-lg mb-2">
+          {product.name}
+        </h3>
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-green-600 font-bold text-lg">
+            £{product.price}
+          </span>
+          <span className="text-sm text-gray-500">per {product.unit}</span>
+          {product.originalPrice > product.price && (
+            <span className="text-gray-400 text-sm line-through">
+              £{product.originalPrice}
+            </span>
+          )}
+        </div>
+
+        {/* Quantity selector */}
+        <div className="flex items-center mt-1 mb-2">
+          <span className="text-sm text-gray-600 mr-2">Qty:</span>
+          <div className="flex items-center border rounded-md">
+            <button
+              onClick={(e) => updateQuantity(e, product.id, -1)}
+              className="px-2 py-1 text-gray-600 hover:bg-gray-100"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="px-2 py-1 min-w-6 text-center">
+              {product.quantity}
+            </span>
+            <button
+              onClick={(e) => updateQuantity(e, product.id, 1)}
+              className="px-2 py-1 text-gray-600 hover:bg-gray-100"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Star Rating */}
+        <div className="mt-auto">{renderStarRating(product.rating || 0)}</div>
+      </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
+    <>
       <Navbar />
+
+      {/* Success message */}
+      {showSuccessMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-5 rounded flex items-center shadow-lg">
+          <Check className="h-5 w-8 mr-2" />
+          Changes saved successfully!
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-green-700 to-green-600 text-white py-8 shadow-lg">
         <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-bold fade-down">Your Wishlist</h1>
-          <p className="mt-2 text-green-100 fade-in delay-200">
+          <h1 className="text-4xl font-bold">Your Wishlist</h1>
+          <p className="mt-2 text-green-100">
             Save your favorite farm-fresh products
           </p>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="container mx-auto px-4 py-12">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64 fade-in">
-            <Loader2 className="h-12 w-12 text-green-600 animate-spin" />
+      {/* Error message for like functionality */}
+      {likeError && (
+        <div className="bg-red-100 text-red-700 p-3 text-center">
+          {likeError}
+        </div>
+      )}
+
+      <div className="container mx-auto px-6 py-4">
+        <button
+          onClick={navigateBack}
+          className="flex items-center text-green-600 hover:text-green-700 mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Shop
+        </button>
+
+        {/* Search Bar */}
+        <div className="relative mb-6">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-gray-400" />
           </div>
-        ) : wishlistItems.length === 0 ? (
-          <div className="text-center py-16 fade-in scale-in">
-            <div className="fade-in delay-200">
-              <Heart className="mx-auto h-20 w-20 text-green-300 mb-4" />
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-              Your wishlist is empty
-            </h2>
-            <p className="text-gray-500 mb-8 max-w-md mx-auto">
-              Browse our farm-fresh products and add your favorites to start
-              building your perfect harvest basket.
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+            placeholder="Search your wishlist..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">
+            My Liked Products
+            <br className=" " />
+            <p className="text-lg text-gray-400 mt-5 font-normal ">
+              {filteredProducts.length}{" "}
+              {filteredProducts.length === 1 ? "item" : "items"} in your
+              wishlist
+              {selectedProducts.length > 0 && (
+                <span className="ml-2 text-green-600">
+                  ({selectedProducts.length} selected)
+                </span>
+              )}
             </p>
-            <div className="btn-scale">
-              <Link
-                href="/products"
-                className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors shadow-md hover:shadow-lg"
+          </h1>
+
+          <div className="flex items-center gap-4">
+            {/* Save Changes Button - only visible when products are selected */}
+            {selectedProducts.length > 0 && (
+              <button
+                onClick={saveChanges}
+                className="flex items-center bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
               >
-                Explore Products
-              </Link>
+                <Trash2 className="h-5 w-5 mr-2" />
+                Remove Selected ({selectedProducts.length})
+              </button>
+            )}
+
+            {/* View Toggle */}
+            <div className="border rounded-md flex">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-2 ${
+                  viewMode === "grid"
+                    ? "bg-gray-100 text-gray-800"
+                    : "bg-white text-gray-600"
+                }`}
+                aria-label="Grid view"
+                title="Grid view"
+              >
+                <Grid className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-2 ${
+                  viewMode === "list"
+                    ? "bg-gray-100 text-gray-800"
+                    : "bg-white text-gray-600"
+                }`}
+                aria-label="List view"
+                title="List view"
+              >
+                <List className="h-5 w-5" />
+              </button>
             </div>
-          </div>
-        ) : (
-          <>
-            <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <p className="text-gray-600 text-lg">
-                {wishlistItems.length}{" "}
-                {wishlistItems.length === 1 ? "item" : "items"} in your wishlist
-              </p>
 
-              {/* View toggle buttons */}
-              <div className="flex items-center">
-                <span className="text-gray-500 mr-3 text-sm">View:</span>
-                <div className="bg-white rounded-lg border border-gray-200 p-1 flex">
-                  <button
-                    onClick={() => setViewType("grid")}
-                    className={`p-2 rounded-md flex items-center justify-center transition-colors btn-scale ${
-                      viewType === "grid"
-                        ? "bg-green-600 text-white"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                    }`}
-                    title="Grid view"
-                  >
-                    <Grid className="h-4 w-4" />
-                  </button>
-
-                  <button
-                    onClick={() => setViewType("list")}
-                    className={`p-2 rounded-md flex items-center justify-center transition-colors btn-scale ${
-                      viewType === "list"
-                        ? "bg-green-600 text-white"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                    }`}
-                    title="List view"
-                  >
-                    <List className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <Link
-                  href="/shop"
-                  className="ml-4 text-green-600 hover:text-green-800 font-medium flex items-center gap-2 group"
+            {/* Sorting Dropdown */}
+            <div className="relative inline-block text-left">
+              <div>
+                <button
+                  type="button"
+                  className="inline-flex justify-between w-48 rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
                 >
-                  Continue shopping
-                  <span className="transform transition-transform group-hover:translate-x-1">
-                    →
-                  </span>
-                </Link>
+                  {getSortLabel()}
+                  <ChevronDown className="ml-2 h-5 w-5" />
+                </button>
               </div>
-            </div>
 
-            <div className="view-transition">
-              {viewType === "list" ? (
-                <ListView key="list" />
-              ) : (
-                <GridView key="grid" />
+              {showSortDropdown && (
+                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                  <div className="py-1" role="menu" aria-orientation="vertical">
+                    <button
+                      onClick={() => handleSortChange("relevant")}
+                      className={`${
+                        sortOption === "relevant" ? "bg-gray-100" : ""
+                      } block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100`}
+                      role="menuitem"
+                    >
+                      Most Relevant
+                    </button>
+                    <button
+                      onClick={() => handleSortChange("cheapest")}
+                      className={`${
+                        sortOption === "cheapest" ? "bg-gray-100" : ""
+                      } block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100`}
+                      role="menuitem"
+                    >
+                      Price: Low to High
+                    </button>
+                    <button
+                      onClick={() => handleSortChange("expensive")}
+                      className={`${
+                        sortOption === "expensive" ? "bg-gray-100" : ""
+                      } block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100`}
+                      role="menuitem"
+                    >
+                      Price: High to Low
+                    </button>
+                    <button
+                      onClick={() => handleSortChange("rating")}
+                      className={`${
+                        sortOption === "rating" ? "bg-gray-100" : ""
+                      } block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100`}
+                      role="menuitem"
+                    >
+                      Highest Rated
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-          </>
+          </div>
+        </div>
+
+        {filteredProducts.length > 0 ? (
+          viewMode === "grid" ? (
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"
+              style={{ gap: "20px" }}
+            >
+              {filteredProducts.map((product) => renderGridItem(product))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-5" style={{ gap: "20px" }}>
+              {filteredProducts.map((product) => renderListItem(product))}
+            </div>
+          )
+        ) : (
+          <div className="text-center py-16">
+            <div className="flex flex-col items-center">
+              <Heart className="h-16 w-16 text-gray-300 mb-4" />
+              <h2 className="text-xl font-medium text-gray-700 mb-2">
+                {searchQuery
+                  ? "No matching products found"
+                  : "No favourites yet"}
+              </h2>
+              <p className="text-gray-500 mb-6">
+                {searchQuery
+                  ? "Try a different search term"
+                  : "You haven't liked any products yet"}
+              </p>
+              <button
+                onClick={() => router.push("/shop")}
+                className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700"
+              >
+                Browse Products
+              </button>
+            </div>
+          </div>
         )}
       </div>
-    </div>
+    </>
   );
-};
-
-export default WishlistPage;
+}
