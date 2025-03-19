@@ -19,6 +19,7 @@ interface FormData {
   businessDocument?: File | null;
   phoneNumber?: string;
   dateOfBirth?: string;
+  googleToken?: string;
 }
 
 interface FormErrors {
@@ -159,24 +160,33 @@ const RegistrationPage: React.FC = () => {
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLoading(true);
-      console.log('Google token:', tokenResponse.access_token);
+      
       try {
-        let businessDocumentBase64: string | undefined;
-        if (formData.accountType === 'business' && formData.businessDocument) {
-          const fileReader = new FileReader();
-          businessDocumentBase64 = await new Promise((resolve) => {
-            fileReader.onload = () => resolve(fileReader.result as string);
-            fileReader.readAsDataURL(formData.businessDocument!);
-          });
+        
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        });
+        const userData = await userInfoResponse.json();
+        
+        if (formData.accountType === 'business') {
+          setFormData(prev => ({ 
+            ...prev, 
+            googleToken: tokenResponse.access_token,
+            firstName: userData.given_name || '',
+            lastName: userData.family_name || '',
+            email: userData.email || ''
+          }));
+          setStep(3);
+          setLoading(false);
+          return;
         }
-  
+
         const response = await fetch('/api/user-registration-auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             token: tokenResponse.access_token,
             accountType: formData.accountType,
-            businessDocument: businessDocumentBase64,
           }),
         });
         console.log('Response status:', response.status);
@@ -214,20 +224,33 @@ const RegistrationPage: React.FC = () => {
 
   const validateStep = (currentStep: number) => {
     const newErrors: FormErrors = {};
-    if (currentStep === 0 && !formData.accountType) newErrors.accountType = 'Please select an account type';
+    if (currentStep === 0 && !formData.accountType) {
+      newErrors.accountType = 'Please select an account type';
+    }
+    
     if (currentStep === 2 && loginMethod === 'email') {
       if (!emailInput) newErrors.email = 'Email is required';
       else if (!validateEmail(emailInput)) newErrors.email = 'Please enter a valid email';
       else if (emailStatus.checking) newErrors.email = 'Checking email...';
       else if (emailStatus.available === false) newErrors.email = emailStatus.message;
     }
-    if (currentStep === 3 && loginMethod === 'email') {
+
+    if (currentStep === 3) {
       if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
       if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+      
       if (formData.accountType === 'business') {
-        if (!formData.businessName?.trim()) newErrors.businessName = 'Business name is required';
-        if (!formData.registrationNumber?.trim()) newErrors.registrationNumber = 'Registration number is required';
+        if (!formData.businessName?.trim()) {
+          newErrors.businessName = 'Business name is required';
+        }
+        if (!formData.registrationNumber?.trim()) {
+          newErrors.registrationNumber = 'Registration number is required';
+        }
+        if (!formData.businessDocument && loginMethod === 'google') {
+          newErrors.businessName = 'Business document is required';
+        }
       }
+
       if (formData.accountType === 'individual') {
         const phoneValidation = validatePhoneNumber(formData.phoneNumber || '');
         if (!phoneValidation.isValid) newErrors.phoneNumber = phoneValidation.error;
@@ -235,12 +258,14 @@ const RegistrationPage: React.FC = () => {
         if (!dobValidation.isValid) newErrors.dateOfBirth = dobValidation.error;
       }
     }
+
     if (currentStep === 4 && loginMethod === 'email') {
       if (!formData.password) newErrors.password = 'Password is required';
       else if (!validatePassword(formData.password)) newErrors.password = 'Password does not meet requirements';
       if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password';
       else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     }
+
     setErrors(newErrors);
     console.log('Validation errors:', newErrors);
     return Object.keys(newErrors).length === 0;
@@ -257,10 +282,73 @@ const RegistrationPage: React.FC = () => {
         }, 100);
       });
     }
+
+    console.log('Current form data:', formData);
+    
     if (validateStep(step)) {
       if (step === 2 && loginMethod === 'email') {
         setFormData({ ...formData, email: emailInput });
       }
+      
+      if (step === 3 && loginMethod === 'google' && formData.accountType === 'business' && formData.googleToken) {
+        setLoading(true);
+        try {
+          let businessDocumentBase64: string | undefined;
+          let businessDocumentName: string | undefined;
+          let businessDocumentType: string | undefined;
+
+          if (formData.businessDocument) {
+            const fileReader = new FileReader();
+            businessDocumentBase64 = await new Promise((resolve) => {
+              fileReader.onload = () => resolve(fileReader.result as string);
+              fileReader.readAsDataURL(formData.businessDocument!);
+            });
+            businessDocumentName = formData.businessDocument.name;
+            businessDocumentType = formData.businessDocument.type;
+          }
+
+          const requestBody = {
+            token: formData.googleToken,
+            accountType: formData.accountType,
+            businessName: formData.businessName,
+            registrationNumber: formData.registrationNumber,
+            businessDocument: businessDocumentBase64,
+            businessDocumentName: businessDocumentName,
+            businessDocumentType: businessDocumentType,
+            firstName: formData.firstName,
+            lastName: formData.lastName
+          };
+
+          console.log('Sending request with body:', requestBody);
+
+          const response = await fetch('/api/user-registration-auth/google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+          });
+
+          console.log('Response status:', response.status);
+          
+          const data = await response.json();
+          console.log('Response data:', data);
+          
+          if (!response.ok) throw new Error(data.error || 'Google registration failed');
+          
+          setTwoFactorData({
+            qrCode: data.twoFactorSecret,
+            backupCodes: data.backupCodes,
+            message: data.message || 'Account created via Google. Please set up 2FA.',
+          });
+          setStep(5);
+        } catch (err: any) {
+          console.error('Google signup error:', err.message);
+          setErrors({ ...errors, businessName: err.message });
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       setStep(step + 1);
     }
   };
@@ -279,15 +367,15 @@ const RegistrationPage: React.FC = () => {
     if (!validateStep(4)) return;
     setLoading(true);
     try {
-      let businessDocumentBase64: string | undefined;
+      let businessDocumentData: { buffer?: ArrayBuffer, name?: string, type?: string } = {};
       if (formData.accountType === 'business' && formData.businessDocument) {
-        const fileReader = new FileReader();
-        businessDocumentBase64 = await new Promise((resolve) => {
-          fileReader.onload = () => resolve(fileReader.result as string);
-          fileReader.readAsDataURL(formData.businessDocument!);
-        });
+        businessDocumentData = {
+          buffer: await formData.businessDocument.arrayBuffer(),
+          name: formData.businessDocument.name,
+          type: formData.businessDocument.type
+        };
       }
-  
+
       const response = await fetch('/api/user-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -301,7 +389,9 @@ const RegistrationPage: React.FC = () => {
           accountType: formData.accountType,
           businessName: formData.accountType === 'business' ? formData.businessName : undefined,
           registrationNumber: formData.accountType === 'business' ? formData.registrationNumber : undefined,
-          businessDocument: businessDocumentBase64,
+          businessDocument: businessDocumentData.buffer ? Array.from(new Uint8Array(businessDocumentData.buffer)) : undefined,
+          businessDocumentName: businessDocumentData.name,
+          businessDocumentType: businessDocumentData.type,
         }),
       });
       const data = await response.json();
@@ -327,7 +417,7 @@ const RegistrationPage: React.FC = () => {
     return false;
   }, [loading, step, loginMethod, emailInput, emailStatus]);
 
-  const getStepContent = () => {
+  const getStepContent = (isMobile = false) => {
     switch (step) {
       case 0: 
         return (
@@ -353,10 +443,10 @@ const RegistrationPage: React.FC = () => {
       case 2: 
         return (
           <div className="w-full">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">What's your email?</label>
+            <label htmlFor={isMobile ? "email-mobile" : "email-desktop"} className="block text-sm font-medium text-gray-700 mb-1">What's your email?</label>
             <input
               type="email"
-              id="email"
+              id={isMobile ? "email-mobile" : "email-desktop"}
               value={emailInput}
               onChange={handleEmailChange}
               placeholder="Enter your email address"
@@ -371,44 +461,48 @@ const RegistrationPage: React.FC = () => {
       case 3: 
         return (
           <div className="space-y-4 w-full">
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-              <input type="text" id="firstName" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} placeholder="Enter your first name" className={`w-full px-4 py-3 rounded-lg border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
-              {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>}
-            </div>
-            <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-              <input type="text" id="lastName" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} placeholder="Enter your last name" className={`w-full px-4 py-3 rounded-lg border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
-              {errors.lastName && <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>}
-            </div>
+            {loginMethod !== 'google' && (
+              <>
+                <div>
+                  <label htmlFor={isMobile ? "firstName-mobile" : "firstName-desktop"} className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <input type="text" id={isMobile ? "firstName-mobile" : "firstName-desktop"} value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} placeholder="Enter your first name" className={`w-full px-4 py-3 rounded-lg border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
+                  {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>}
+                </div>
+                <div>
+                  <label htmlFor={isMobile ? "lastName-mobile" : "lastName-desktop"} className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <input type="text" id={isMobile ? "lastName-mobile" : "lastName-desktop"} value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} placeholder="Enter your last name" className={`w-full px-4 py-3 rounded-lg border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
+                  {errors.lastName && <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>}
+                </div>
+              </>
+            )}
             {formData.accountType === 'business' ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
-                  <input type="text" value={formData.businessName} onChange={(e) => setFormData({ ...formData, businessName: e.target.value })} placeholder="Enter business name" className={`w-full px-4 py-3 rounded-lg border ${errors.businessName ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
+                  <label htmlFor={isMobile ? "businessName-mobile" : "businessName-desktop"} className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                  <input type="text" id={isMobile ? "businessName-mobile" : "businessName-desktop"} value={formData.businessName} onChange={(e) => setFormData({ ...formData, businessName: e.target.value })} placeholder="Enter business name" className={`w-full px-4 py-3 rounded-lg border ${errors.businessName ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
                   {errors.businessName && <p className="mt-1 text-sm text-red-500">{errors.businessName}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Registration Number</label>
-                  <input type="text" value={formData.registrationNumber} onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })} placeholder="Enter registration number" className={`w-full px-4 py-3 rounded-lg border ${errors.registrationNumber ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
+                  <label htmlFor={isMobile ? "registrationNumber-mobile" : "registrationNumber-desktop"} className="block text-sm font-medium text-gray-700 mb-1">Registration Number</label>
+                  <input type="text" id={isMobile ? "registrationNumber-mobile" : "registrationNumber-desktop"} value={formData.registrationNumber} onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })} placeholder="Enter registration number" className={`w-full px-4 py-3 rounded-lg border ${errors.registrationNumber ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
                   {errors.registrationNumber && <p className="mt-1 text-sm text-red-500">{errors.registrationNumber}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Document</label>
-                  <input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setFormData({ ...formData, businessDocument: e.target.files?.[0] || null })} className="w-full" />
+                  <label htmlFor={isMobile ? "businessDocument-mobile" : "businessDocument-desktop"} className="block text-sm font-medium text-gray-700 mb-1">Business Document</label>
+                  <input type="file" id={isMobile ? "businessDocument-mobile" : "businessDocument-desktop"} accept=".pdf,.doc,.docx" onChange={(e) => setFormData({ ...formData, businessDocument: e.target.files?.[0] || null })} className="w-full" />
                   <p className="text-xs text-gray-500 mt-1">Upload business registration document (PDF, DOC, DOCX)</p>
                 </div>
               </>
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  <input type="tel" value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} placeholder="Enter phone number" className={`w-full px-4 py-3 rounded-lg border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
+                  <label htmlFor={isMobile ? "phoneNumber-mobile" : "phoneNumber-desktop"} className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input type="tel" id={isMobile ? "phoneNumber-mobile" : "phoneNumber-desktop"} value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} placeholder="Enter phone number" className={`w-full px-4 py-3 rounded-lg border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
                   {errors.phoneNumber && <p className="mt-1 text-sm text-red-500">{errors.phoneNumber}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  <input type="date" value={formData.dateOfBirth} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} className={`w-full px-4 py-3 rounded-lg border ${errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
+                  <label htmlFor={isMobile ? "dateOfBirth-mobile" : "dateOfBirth-desktop"} className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                  <input type="date" id={isMobile ? "dateOfBirth-mobile" : "dateOfBirth-desktop"} value={formData.dateOfBirth} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} className={`w-full px-4 py-3 rounded-lg border ${errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
                   {errors.dateOfBirth && <p className="mt-1 text-sm text-red-500">{errors.dateOfBirth}</p>}
                 </div>
               </>
@@ -420,9 +514,9 @@ const RegistrationPage: React.FC = () => {
           return (
             <div className="space-y-4 w-full">
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Create Password</label>
+                <label htmlFor={isMobile ? "password-mobile" : "password-desktop"} className="block text-sm font-medium text-gray-700 mb-1">Create Password</label>
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} id="password" value={formData.password} onChange={(e) => { setFormData({ ...formData, password: e.target.value }); validatePassword(e.target.value); }} placeholder="Enter your password" className={`w-full px-4 py-3 rounded-lg border ${errors.password ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all pr-10`} />
+                  <input type={showPassword ? 'text' : 'password'} id={isMobile ? "password-mobile" : "password-desktop"} value={formData.password} onChange={(e) => { setFormData({ ...formData, password: e.target.value }); validatePassword(e.target.value); }} placeholder="Enter your password" className={`w-full px-4 py-3 rounded-lg border ${errors.password ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all pr-10`} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</button>
                 </div>
                 <div className="mt-3 space-y-2">
@@ -444,8 +538,8 @@ const RegistrationPage: React.FC = () => {
                 {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
               </div>
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                <input type={showPassword ? 'text' : 'password'} id="confirmPassword" value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} placeholder="Confirm your password" className={`w-full px-4 py-3 rounded-lg border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
+                <label htmlFor={isMobile ? "confirmPassword-mobile" : "confirmPassword-desktop"} className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <input type={showPassword ? 'text' : 'password'} id={isMobile ? "confirmPassword-mobile" : "confirmPassword-desktop"} value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} placeholder="Confirm your password" className={`w-full px-4 py-3 rounded-lg border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all`} />
                 {errors.confirmPassword && <p className="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>}
               </div>
             </div>
@@ -545,7 +639,7 @@ const RegistrationPage: React.FC = () => {
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">{getHeaderText()}</h1>
                 <p className="text-sm text-gray-500">{getSubHeaderText()}</p>
               </div>
-              <div className="space-y-6">{getStepContent()}</div>
+              <div className="space-y-6">{getStepContent(true)}</div>
               <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4">
                 {step >= 0 && (
                   <div className="flex gap-4">
@@ -573,26 +667,24 @@ const RegistrationPage: React.FC = () => {
             </div>
             {renderDesktopProgress()}
             <div className="bg-white rounded-xl shadow-sm p-8">
-              <div className="space-y-6">
-                {getStepContent()}
-                {step >= 0 && (
-                  <div className="flex gap-4 pt-4">
-                    {(step >= 1 && step !== 5) && (
-                      <button onClick={handleBack} disabled={loading} className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50">
-                        <ArrowLeft className="w-5 h-5" />Back
-                      </button>
-                    )}
-                    <button
-                      onClick={step === 4 && loginMethod === 'email' ? handleSubmit : step === 5 ? () => window.location.href = '/login' : handleNext}
-                      disabled={isNextDisabled()}
-                      className={`flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${isNextDisabled() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {loading ? 'Processing...' : step === 4 && loginMethod === 'email' ? 'Create Account' : step === 5 ? 'Done' : 'Next'}
-                      {step !== 4 && step !== 5 && <ArrowRight className="w-5 h-5" />}
+              <div className="space-y-6">{getStepContent(false)}</div>
+              {step >= 0 && (
+                <div className="flex gap-4 pt-4">
+                  {(step >= 1 && step !== 5) && (
+                    <button onClick={handleBack} disabled={loading} className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50">
+                      <ArrowLeft className="w-5 h-5" />Back
                     </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                  <button
+                    onClick={step === 4 && loginMethod === 'email' ? handleSubmit : step === 5 ? () => window.location.href = '/login' : handleNext}
+                    disabled={isNextDisabled()}
+                    className={`flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${isNextDisabled() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {loading ? 'Processing...' : step === 4 && loginMethod === 'email' ? 'Create Account' : step === 5 ? 'Done' : 'Next'}
+                    {step !== 4 && step !== 5 && <ArrowRight className="w-5 h-5" />}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -61,7 +61,17 @@ async function sendVerificationEmail(email: string, verificationToken: string): 
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
     const body = await req.json();
-    const { token, accountType, businessDocument } = body;
+    const { 
+      token, 
+      accountType, 
+      businessDocument, 
+      businessName, 
+      registrationNumber, 
+      businessDocumentName, 
+      businessDocumentType,
+      firstName,
+      lastName
+    } = body;
   
     if (!token || !accountType) return NextResponse.json({ error: 'Token and account type required' }, { status: 400 });
   
@@ -81,9 +91,37 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   
       await pool.query(
         `INSERT INTO harvesthub_users (
-          email, password, first_name, last_name, account_type, verification_token, two_factor_secret, two_factor_backup_codes, login_method, business_document
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-        [user.email, 'google-auth', user.given_name || 'Unknown', user.family_name || 'Unknown', accountType, verificationToken, twoFactorSecret.base32, JSON.stringify(backupCodes), 'google', businessDocument || null]
+          email, 
+          password, 
+          first_name, 
+          last_name, 
+          account_type, 
+          verification_token, 
+          two_factor_secret, 
+          two_factor_backup_codes, 
+          login_method, 
+          business_document,
+          business_name,
+          registration_number,
+          business_document_name,
+          business_document_type
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+        [
+          user.email,
+          'google-auth',
+          firstName || user.given_name || 'Unknown',
+          lastName || user.family_name || 'Unknown',
+          accountType,
+          verificationToken,
+          twoFactorSecret.base32,
+          JSON.stringify(backupCodes),
+          'google',
+          businessDocument || null,
+          businessName || null,
+          registrationNumber || null,
+          businessDocumentName || null,
+          businessDocumentType || null
+        ]
       );
   
       await sendVerificationEmail(user.email, verificationToken);
