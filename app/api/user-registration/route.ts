@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import Joi from 'joi';
 import nodemailer from 'nodemailer';
@@ -33,6 +33,21 @@ const registrationSchema = Joi.object({
   accountType: Joi.string().valid('individual', 'business').required(),
   businessName: Joi.string().when('accountType', { is: 'business', then: Joi.required(), otherwise: Joi.optional().allow('') }),
   registrationNumber: Joi.string().when('accountType', { is: 'business', then: Joi.required(), otherwise: Joi.optional().allow('') }),
+  businessDocument: Joi.array().when('accountType', { 
+    is: 'business', 
+    then: Joi.array().items(Joi.number()).required(), 
+    otherwise: Joi.optional().allow(null) 
+  }),
+  businessDocumentName: Joi.string().when('accountType', { 
+    is: 'business', 
+    then: Joi.string().required(), 
+    otherwise: Joi.optional().allow(null, '') 
+  }),
+  businessDocumentType: Joi.string().when('accountType', { 
+    is: 'business', 
+    then: Joi.string().required(), 
+    otherwise: Joi.optional().allow(null, '') 
+  })
 });
 
 async function sendVerificationEmail(email: string, verificationToken: string): Promise<void> {
@@ -125,7 +140,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await rateLimiter.consume(clientIp);
 
     const body = await req.json();
-    const { email, password, firstName, lastName, phoneNumber, dateOfBirth, accountType, businessName, registrationNumber, businessDocument } = body;
+    const { email, password, firstName, lastName, phoneNumber, dateOfBirth, accountType, 
+            businessName, registrationNumber, businessDocument, businessDocumentName, businessDocumentType } = body;
 
     const { error, value } = registrationSchema.validate(body);
     if (error) return NextResponse.json({ error: error.details[0].message }, { status: 400 });
@@ -133,20 +149,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const { rows } = await pool.query('SELECT * FROM harvesthub_users WHERE email = $1', [email]);
     if (rows.length > 0) return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await argon2.hash(password);
     const verificationToken = jwt.sign({ email }, jwtSecret, { expiresIn: '24h' });
     const twoFactorSecret = speakeasy.generateSecret({ name: `HarvestHub:${email}` });
     const backupCodes = Array(10).fill(0).map(() => speakeasy.generateSecret().base32.slice(0, 10));
 
+    
+    const businessDocumentBuffer = businessDocument ? Buffer.from(new Uint8Array(businessDocument)) : null;
+
     const newUser = await pool.query(
       `INSERT INTO harvesthub_users (
         email, password, first_name, last_name, phone_number, date_of_birth, account_type,
-        business_name, registration_number, business_document, verification_token,
-        two_factor_secret, two_factor_backup_codes, login_method
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+        business_name, registration_number, business_document, business_document_name,
+        business_document_type, verification_token, two_factor_secret, 
+        two_factor_backup_codes, login_method
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
       [
-        email, hashedPassword, firstName, lastName, phoneNumber || null, dateOfBirth || null, accountType,
-        businessName || null, registrationNumber || null, businessDocument || null, verificationToken,
+        email, hashedPassword, firstName, lastName, phoneNumber || null, dateOfBirth || null,
+        accountType, businessName || null, registrationNumber || null, businessDocumentBuffer,
+        businessDocumentName || null, businessDocumentType || null, verificationToken,
         twoFactorSecret.base32, JSON.stringify(backupCodes), 'email'
       ]
     );
